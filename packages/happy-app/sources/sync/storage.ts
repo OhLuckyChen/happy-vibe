@@ -16,7 +16,7 @@ import { createReducer, reducer, ReducerState } from "./reducer/reducer";
 import { Message } from "./typesMessage";
 import { NormalizedMessage } from "./typesRaw";
 import { isMachineOnline } from '@/utils/machineUtils';
-import { getSessionName, getSessionSubtitle, getSessionAvatarId, type SessionState } from '@/utils/sessionUtils';
+import { getSessionName, getSessionSubtitle, getSessionAvatarId, hasPendingPermissionRequests, type SessionState } from '@/utils/sessionUtils';
 import { applySettings, Settings } from "./settings";
 import { LocalSettings, applyLocalSettings } from "./localSettings";
 import { Purchases, customerInfoToPurchases } from "./purchases";
@@ -50,6 +50,10 @@ function resolveSessionOnlineState(session: { active: boolean; activeAt: number 
 function isSessionActive(session: { active: boolean; activeAt: number }): boolean {
     // Use the active flag directly, no timeout checks
     return session.active;
+}
+
+function isSessionValue(value: unknown): value is Session {
+    return !!value && typeof value === 'object' && typeof (value as Session).id === 'string';
 }
 
 // Known entitlement IDs
@@ -90,14 +94,21 @@ export interface SessionRowData {
     machineId: string | null;
     path: string | null;
     homeDir: string | null;
+    groupId: string | null;
+    groupName: string | null;
+    agentRole: 'executor' | 'reviewer' | null;
+    agentType: 'claude' | 'codex' | null;
+    providerTypes: string[];
     completedTodosCount: number;
     totalTodosCount: number;
     hasUnread: boolean;
+    isGroup: boolean;
+    groupSessionIds?: string[];
 }
 
 function buildSessionRowData(session: Session, unreadSessionIds?: Set<string>): SessionRowData {
     const isOnline = session.presence === "online";
-    const hasPermissions = !!(session.agentState?.requests && Object.keys(session.agentState.requests).length > 0);
+    const hasPermissions = hasPendingPermissionRequests(session.agentState);
 
     let state: SessionState;
     if (!isOnline) {
@@ -123,10 +134,89 @@ function buildSessionRowData(session: Session, unreadSessionIds?: Set<string>): 
         machineId: session.metadata?.machineId ?? null,
         path: session.metadata?.path ?? null,
         homeDir: session.metadata?.homeDir ?? null,
+        groupId: session.metadata?.groupId ?? null,
+        groupName: session.metadata?.groupName ?? null,
+        agentRole: session.metadata?.agentRole ?? null,
+        agentType: session.metadata?.agentType ?? null,
+        providerTypes: [session.metadata?.agentType ?? session.metadata?.flavor ?? 'claude'],
         completedTodosCount: session.todos?.filter(todo => todo.status === 'completed').length ?? 0,
         totalTodosCount: session.todos?.length ?? 0,
         hasUnread: unreadSessionIds?.has(session.id) ?? false,
+        isGroup: false,
     };
+}
+
+function buildGroupRowData(groupId: string, groupSessions: Session[], unreadSessionIds?: Set<string>): SessionRowData {
+    const rows = groupSessions.map(session => buildSessionRowData(session, unreadSessionIds));
+    const first = groupSessions[0];
+    const firstRow = rows[0];
+    const groupName = first?.metadata?.groupName ?? groupId;
+    const active = rows.some(row => row.active);
+    const state: SessionState = rows.some(row => row.state === 'permission_required')
+        ? 'permission_required'
+        : rows.some(row => row.state === 'thinking')
+            ? 'thinking'
+            : rows.some(row => row.state === 'waiting')
+                ? 'waiting'
+                : 'disconnected';
+    const createdAt = Math.max(...groupSessions.map(session => session.createdAt ?? 0));
+    const activeAt = Math.max(...groupSessions.map(session => session.activeAt ?? session.createdAt ?? 0));
+    const agentLabels = groupSessions
+        .map(session => session.metadata?.agentType === 'claude' ? 'Claude' : 'Codex')
+        .filter((label, index, labels) => labels.indexOf(label) === index);
+
+    return {
+        id: `group:${groupId}`,
+        name: groupName,
+        subtitle: agentLabels.length > 0 ? agentLabels.join(' + ') : `${groupSessions.length} agents`,
+        avatarId: firstRow?.avatarId ?? groupId,
+        flavor: null,
+        state,
+        ...(!active && { activeAt }),
+        createdAt,
+        hasDraft: rows.some(row => row.hasDraft),
+        active,
+        machineId: firstRow?.machineId ?? null,
+        path: firstRow?.path ?? null,
+        homeDir: firstRow?.homeDir ?? null,
+        groupId,
+        groupName,
+        agentRole: null,
+        agentType: null,
+        providerTypes: rows
+            .flatMap(row => row.providerTypes)
+            .filter((provider, index, providers) => providers.indexOf(provider) === index),
+        completedTodosCount: rows.reduce((sum, row) => sum + row.completedTodosCount, 0),
+        totalTodosCount: rows.reduce((sum, row) => sum + row.totalTodosCount, 0),
+        hasUnread: rows.some(row => row.hasUnread),
+        isGroup: true,
+        groupSessionIds: groupSessions.map(session => session.id),
+    };
+}
+
+function buildSessionRowsWithGroups(
+    sessions: Record<string, Session>,
+    unreadSessionIds?: Set<string>,
+): SessionRowData[] {
+    const normalRows: SessionRowData[] = [];
+    const grouped = new Map<string, Session[]>();
+
+    Object.values(sessions).filter(isSessionValue).forEach(session => {
+        const groupId = session.metadata?.groupId;
+        if (groupId) {
+            const groupSessions = grouped.get(groupId) ?? [];
+            groupSessions.push(session);
+            grouped.set(groupId, groupSessions);
+        } else {
+            normalRows.push(buildSessionRowData(session, unreadSessionIds));
+        }
+    });
+
+    const groupRows = Array.from(grouped.entries()).map(([groupId, groupSessions]) =>
+        buildGroupRowData(groupId, groupSessions, unreadSessionIds)
+    );
+
+    return [...normalRows, ...groupRows];
 }
 
 // Unified list item type for SessionsList component
@@ -235,28 +325,30 @@ function buildSessionListViewData(
     sessions: Record<string, Session>,
     unreadSessionIds?: Set<string>,
 ): SessionListViewItem[] {
-    // Separate active and inactive sessions
-    const activeSessions: Session[] = [];
-    const inactiveSessions: Session[] = [];
+    const rows = buildSessionRowsWithGroups(sessions, unreadSessionIds);
 
-    Object.values(sessions).forEach(session => {
-        if (isSessionActive(session)) {
-            activeSessions.push(session);
+    // Separate active and inactive rows
+    const activeSessions: SessionRowData[] = [];
+    const inactiveSessions: SessionRowData[] = [];
+
+    rows.forEach(row => {
+        if (row.active) {
+            activeSessions.push(row);
         } else {
-            inactiveSessions.push(session);
+            inactiveSessions.push(row);
         }
     });
 
     // Sort by creation date (newest first) — matches applySessions behavior
-    activeSessions.sort((a, b) => b.createdAt - a.createdAt);
-    inactiveSessions.sort((a, b) => b.createdAt - a.createdAt);
+    activeSessions.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    inactiveSessions.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
     // Build unified list view data
     const listData: SessionListViewItem[] = [];
 
     // Add active sessions as a single item at the top (if any)
     if (activeSessions.length > 0) {
-        listData.push({ type: 'active-sessions', sessions: activeSessions.map(s => buildSessionRowData(s, unreadSessionIds)) });
+        listData.push({ type: 'active-sessions', sessions: activeSessions });
     }
 
     // Group inactive sessions by date
@@ -264,11 +356,11 @@ function buildSessionListViewData(
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
 
-    let currentDateGroup: Session[] = [];
+    let currentDateGroup: SessionRowData[] = [];
     let currentDateString: string | null = null;
 
-    for (const session of inactiveSessions) {
-        const sessionDate = new Date(session.createdAt);
+    for (const sessionRow of inactiveSessions) {
+        const sessionDate = new Date(sessionRow.createdAt ?? sessionRow.activeAt ?? 0);
         const dateString = sessionDate.toDateString();
 
         if (currentDateString !== dateString) {
@@ -289,16 +381,16 @@ function buildSessionListViewData(
                 }
 
                 listData.push({ type: 'header', title: headerTitle });
-                currentDateGroup.forEach(sess => {
-                    listData.push({ type: 'session', session: buildSessionRowData(sess, unreadSessionIds) });
+                currentDateGroup.forEach(row => {
+                    listData.push({ type: 'session', session: row });
                 });
             }
 
             // Start new group
             currentDateString = dateString;
-            currentDateGroup = [session];
+            currentDateGroup = [sessionRow];
         } else {
-            currentDateGroup.push(session);
+            currentDateGroup.push(sessionRow);
         }
     }
 
@@ -319,8 +411,8 @@ function buildSessionListViewData(
         }
 
         listData.push({ type: 'header', title: headerTitle });
-        currentDateGroup.forEach(sess => {
-            listData.push({ type: 'session', session: buildSessionRowData(sess, unreadSessionIds) });
+        currentDateGroup.forEach(row => {
+            listData.push({ type: 'session', session: row });
         });
     }
 
@@ -387,9 +479,10 @@ export const storage = create<StorageState>()((set, get) => {
         },
         getActiveSessions: () => {
             const state = get();
-            return Object.values(state.sessions).filter(s => s.active);
+            return Object.values(state.sessions).filter(isSessionValue).filter(s => s.active);
         },
         applySessions: (sessions: (Omit<Session, 'presence'> & { presence?: "online" | number })[]) => set((state) => {
+            const validSessions = sessions.filter(isSessionValue);
             // Load drafts and permission modes if sessions are empty (initial load)
             const isInitialLoad = Object.keys(state.sessions).length === 0;
             const savedDrafts = isInitialLoad ? sessionDrafts : {};
@@ -398,10 +491,15 @@ export const storage = create<StorageState>()((set, get) => {
             const savedEffortLevels = isInitialLoad ? sessionEffortLevels : {};
 
             // Merge new sessions with existing ones
-            const mergedSessions: Record<string, Session> = { ...state.sessions };
+            const mergedSessions: Record<string, Session> = {};
+            Object.entries(state.sessions).forEach(([id, session]) => {
+                if (isSessionValue(session)) {
+                    mergedSessions[id] = session;
+                }
+            });
 
             // Update sessions with calculated presence using centralized resolver
-            sessions.forEach(session => {
+            validSessions.forEach(session => {
                 // Use centralized resolver for consistent state management
                 const presence = resolveSessionOnlineState(session);
 
@@ -440,7 +538,7 @@ export const storage = create<StorageState>()((set, get) => {
 
             // Build active set from all sessions (including existing ones)
             const activeSet = new Set<string>();
-            Object.values(mergedSessions).forEach(session => {
+            Object.values(mergedSessions).filter(isSessionValue).forEach(session => {
                 if (isSessionActive(session)) {
                     activeSet.add(session.id);
                 }
@@ -451,7 +549,7 @@ export const storage = create<StorageState>()((set, get) => {
             const inactiveSessions: Session[] = [];
 
             // Process all sessions from merged set
-            Object.values(mergedSessions).forEach(session => {
+            Object.values(mergedSessions).filter(isSessionValue).forEach(session => {
                 if (activeSet.has(session.id)) {
                     activeSessions.push(session);
                 } else {
@@ -484,7 +582,7 @@ export const storage = create<StorageState>()((set, get) => {
             // Process AgentState updates for sessions that already have messages loaded
             const updatedSessionMessages = { ...state.sessionMessages };
 
-            sessions.forEach(session => {
+            validSessions.forEach(session => {
                 const oldSession = state.sessions[session.id];
                 const newSession = mergedSessions[session.id];
 
@@ -512,6 +610,9 @@ export const storage = create<StorageState>()((set, get) => {
 
                         // Find NEW permission requests only
                         for (const [requestId, request] of Object.entries(newRequests)) {
+                            if (newSession.agentState?.completedRequests?.[requestId]) {
+                                continue;
+                            }
                             if (!oldRequests[requestId]) {
                                 // This is a NEW permission request
                                 const toolName = request.tool;
@@ -560,16 +661,16 @@ export const storage = create<StorageState>()((set, get) => {
             // "Was active" = thinking or had pending permission requests.
             // "Now idle" = online, not thinking, no pending permissions.
             let unreadSessionIds = state.unreadSessionIds;
-            sessions.forEach(session => {
+            validSessions.forEach(session => {
                 const oldSession = state.sessions[session.id];
                 if (!oldSession) return;
                 const wasActive = oldSession.thinking === true
-                    || (oldSession.agentState?.requests && Object.keys(oldSession.agentState.requests).length > 0);
+                    || hasPendingPermissionRequests(oldSession.agentState);
                 const newSession = mergedSessions[session.id];
                 if (!newSession || !wasActive) return;
                 const isNowIdle = newSession.thinking !== true
                     && newSession.presence === 'online'
-                    && (!newSession.agentState?.requests || Object.keys(newSession.agentState.requests).length === 0);
+                    && !hasPendingPermissionRequests(newSession.agentState);
                 if (isNowIdle && state.currentViewingSessionId !== session.id) {
                     if (!unreadSessionIds.has(session.id)) {
                         unreadSessionIds = new Set(unreadSessionIds);
@@ -984,6 +1085,7 @@ export const storage = create<StorageState>()((set, get) => {
             // Collect all drafts for persistence
             const allDrafts: Record<string, string> = {};
             Object.entries(state.sessions).forEach(([id, sess]) => {
+                if (!isSessionValue(sess)) return;
                 if (id === sessionId) {
                     if (normalizedDraft) {
                         allDrafts[id] = normalizedDraft;
@@ -1493,7 +1595,7 @@ export function useSessionListViewData(): SessionListViewItem[] | null {
 export function useAllSessions(): Session[] {
     return storage(useShallow((state) => {
         if (!state.isDataReady) return [];
-        return Object.values(state.sessions).sort((a, b) => b.updatedAt - a.updatedAt);
+        return Object.values(state.sessions).filter(isSessionValue).sort((a, b) => b.updatedAt - a.updatedAt);
     }));
 }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Happy",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "identifier": "com.slopus.happy",
   "build": {
     "frontendDist": "../dist",
@@ -42,7 +42,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "Developer ID Application: Bulka, LLC (466DQWDR8C)",
+      "signingIdentity": "-",
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",
       "minimumSystemVersion": "10.15"

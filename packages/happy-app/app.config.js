@@ -52,8 +52,11 @@ export default {
     expo: {
         name,
         slug: "as-boss",
-        version: "1.7.0",
+        version: "1.7.2",
         runtimeVersion: "21",
+        updates: {
+            url: "https://u.expo.dev/f178778f-b78f-4b6d-8891-e13cc99b1535",
+        },
         orientation: "default",
         icon: "./sources/assets/images/icon.png",
         scheme: "as-boss",
@@ -113,6 +116,7 @@ export default {
             favicon: "./sources/assets/images/favicon.png"
         },
         plugins: [
+            require("./plugins/withCleartextTraffic.js"),
             require("./plugins/withEinkCompatibility.js"),
             [
                 "expo-router",

@@ -45,10 +45,12 @@ import { UserProfile } from './friendTypes';
 import { resolveMessageModeMeta } from './messageMeta';
 import type { AttachmentPreview, UploadedAttachment } from './attachmentTypes';
 import { requestAttachmentUpload, uploadEncryptedBlob } from './apiAttachments';
+import { pushSessionEventToast } from './sessionEventToasts';
 import { encryptBlob } from '@/encryption/blob';
 import { readFileBytes } from '@/utils/readFileBytes';
 import { Modal } from '@/modal';
 import { t } from '@/text';
+import { getPendingPermissionRequestIds } from '@/utils/permissionRequests';
 
 type V3GetSessionMessagesResponse = {
     messages: ApiMessage[];
@@ -493,17 +495,18 @@ class Sync {
     private async uploadAttachmentsForSession(
         sessionId: string,
         attachments: AttachmentPreview[],
-    ): Promise<{ uploaded: UploadedAttachment[]; failed: number }> {
-        if (!this.credentials) return { uploaded: [], failed: attachments.length };
+    ): Promise<{ uploaded: UploadedAttachment[]; failed: number; errors: string[] }> {
+        if (!this.credentials) return { uploaded: [], failed: attachments.length, errors: ['Missing credentials'] };
 
         const blobKey = this.encryption.getSessionBlobKey(sessionId);
         if (!blobKey) {
             console.error(`[attachments] No blob key for session ${sessionId}`);
-            return { uploaded: [], failed: attachments.length };
+            return { uploaded: [], failed: attachments.length, errors: [`No blob key for session ${sessionId}`] };
         }
 
         const uploaded: UploadedAttachment[] = [];
         let failed = 0;
+        const errors: string[] = [];
 
         for (const attachment of attachments) {
             try {
@@ -531,11 +534,13 @@ class Sync {
             } catch (err) {
                 console.error(`[attachments] Failed to upload ${attachment.name}:`, err);
                 failed++;
+                const message = err instanceof Error ? err.message : String(err);
+                errors.push(`${attachment.name}: ${message}`);
                 // Skip this attachment; do not abort the whole message send.
             }
         }
 
-        return { uploaded, failed };
+        return { uploaded, failed, errors };
     }
 
     async sendMessage(sessionId: string, text: string, options?: SendMessageOptions) {
@@ -584,12 +589,13 @@ class Sync {
 
         // Upload attachments and queue file events before the text message.
         if (effectiveAttachments && effectiveAttachments.length > 0) {
-            const { uploaded, failed } = await this.uploadAttachmentsForSession(sessionId, effectiveAttachments);
+            const { uploaded, failed, errors } = await this.uploadAttachmentsForSession(sessionId, effectiveAttachments);
 
             if (failed > 0) {
+                const details = errors.length > 0 ? `\n\n${errors.slice(0, 2).join('\n')}` : '';
                 Modal.alert(
                     t('imageUpload.uploadFailedTitle'),
-                    t('imageUpload.uploadFailedMessage', { count: failed }),
+                    `${t('imageUpload.uploadFailedMessage', { count: failed })}${details}`,
                     [{ text: t('common.ok'), style: 'cancel' }],
                 );
             }
@@ -2110,11 +2116,14 @@ class Sync {
                     gitStatusSync.invalidate(updateData.body.id);
 
                     // Check for new permission requests and notify voice assistant
-                    if (agentState?.requests && Object.keys(agentState.requests).length > 0) {
-                        const requestIds = Object.keys(agentState.requests);
-                        const firstRequest = agentState.requests[requestIds[0]];
-                        const toolName = firstRequest?.tool;
-                        voiceHooks.onPermissionRequested(updateData.body.id, requestIds[0], toolName, firstRequest?.arguments);
+                    const pendingRequestIds = getPendingPermissionRequestIds(agentState);
+                    if (pendingRequestIds.length > 0) {
+                        const firstRequestId = pendingRequestIds[0];
+                        if (firstRequestId) {
+                            const firstRequest = agentState?.requests?.[firstRequestId];
+                            const toolName = firstRequest?.tool ?? '';
+                            voiceHooks.onPermissionRequested(updateData.body.id, firstRequestId, toolName, firstRequest?.arguments);
+                        }
                     }
 
                     // Re-fetch messages when control returns to mobile (local -> remote mode switch)
@@ -2458,6 +2467,7 @@ class Sync {
         // unread counter on these only, ignore the noisy per-message stream.
         if (updateData.type === 'session-event') {
             notifyUnreadMessage();
+            pushSessionEventToast(updateData);
         }
 
         // daemon-status ephemeral updates are deprecated, machine status is handled via machine-activity

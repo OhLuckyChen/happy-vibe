@@ -21,6 +21,7 @@ import { sessionKill } from '@/sync/ops';
 import { isWorktreePath, getRepoPath, getWorktreeName } from '@/utils/worktree';
 import { useNewSessionDraft } from '@/hooks/useNewSessionDraft';
 import { useRouter } from 'expo-router';
+import { AgentProviderBadge } from './AgentProviderBadge';
 
 const STATUS_CONFIG: Record<SessionState, { color: string; dotColor: string; isPulsing: boolean; isConnected: boolean }> = {
     disconnected: { color: '#999', dotColor: '#999', isPulsing: false, isConnected: false },
@@ -32,6 +33,7 @@ const STATUS_CONFIG: Record<SessionState, { color: string; dotColor: string; isP
 interface ActiveSessionsGroupProps {
     sessions: SessionRowData[];
     selectedSessionId?: string;
+    selectedGroupId?: string;
 }
 
 /**
@@ -163,7 +165,7 @@ const MachineSeparator = React.memo(({ machineName, machineId }: { machineName: 
     );
 });
 
-export function ActiveSessionsGroupCompact({ sessions, selectedSessionId }: ActiveSessionsGroupProps) {
+export function ActiveSessionsGroupCompact({ sessions, selectedSessionId, selectedGroupId }: ActiveSessionsGroupProps) {
     const styles = stylesheet;
     const machines = useAllMachines();
 
@@ -255,7 +257,9 @@ export function ActiveSessionsGroupCompact({ sessions, selectedSessionId }: Acti
                                             <CompactSessionRow
                                                 key={session.id}
                                                 session={session}
-                                                selected={selectedSessionId === session.id}
+                                                selected={session.isGroup
+                                                    ? selectedGroupId === session.groupId
+                                                    : selectedSessionId === session.id}
                                                 showBorder={index < projectGroup.sessions.length - 1}
                                             />
                                         ))}
@@ -275,13 +279,18 @@ const CompactSessionRow = React.memo(({ session, selected, showBorder }: { sessi
     const styles = stylesheet;
     const { theme } = useUnistyles();
     const baseStatus = STATUS_CONFIG[session.state];
+    const isGroupSession = session.isGroup || !!session.groupId;
+    const groupColor = session.isGroup ? '#0EA5E9' : session.agentRole === 'reviewer' ? '#6366F1' : '#10B981';
+    const groupRoleLabel = session.isGroup ? 'Group' : session.agentRole === 'reviewer' ? 'Reviewer' : 'Executor';
+    const [isGroupBadgeHovered, setIsGroupBadgeHovered] = React.useState(false);
     // Override to solid blue when session has unread results
     const status = session.hasUnread
         ? { ...baseStatus, color: '#007AFF', dotColor: '#007AFF', isPulsing: false, isConnected: baseStatus.isConnected }
         : baseStatus;
     const navigateToSession = useNavigateToSession();
+    const router = useRouter();
     const swipeableRef = React.useRef<Swipeable | null>(null);
-    const swipeEnabled = Platform.OS !== 'web';
+    const swipeEnabled = Platform.OS !== 'web' && !session.isGroup;
     const [actionsAnchor, setActionsAnchor] = React.useState<SessionActionsAnchor | null>(null);
 
     const [archivingSession, performArchive] = useHappyAction(async () => {
@@ -297,8 +306,12 @@ const CompactSessionRow = React.memo(({ session, selected, showBorder }: { sessi
     }, [performArchive]);
 
     const handlePress = React.useCallback(() => {
+        if (session.isGroup && session.groupId) {
+            router.push(`/group/${encodeURIComponent(session.groupId)}`);
+            return;
+        }
         navigateToSession(session.id);
-    }, [navigateToSession, session.id]);
+    }, [navigateToSession, router, session.groupId, session.id, session.isGroup]);
 
     const handleContextMenu = React.useCallback((event: any) => {
         event.preventDefault?.();
@@ -311,11 +324,21 @@ const CompactSessionRow = React.memo(({ session, selected, showBorder }: { sessi
     }, []);
 
     const showActionAlert = useSessionActionAlert(session.id);
-    const menuProps = Platform.OS === 'web' ? {
+    const menuProps = session.isGroup ? {} : Platform.OS === 'web' ? {
         onContextMenu: handleContextMenu,
     } as any : {
         onLongPress: showActionAlert,
     };
+
+    const statusLabel = session.hasUnread
+        ? t('status.unread')
+        : session.state === 'thinking'
+            ? 'working'
+            : session.state === 'permission_required'
+                ? t('status.permissionRequired')
+                : session.state === 'waiting'
+                    ? t('status.online')
+                    : t('status.lastSeen', { time: formatLastSeen(session.activeAt ?? Date.now(), false) });
 
     const renderLeadingIndicator = () => {
         let indicator: React.ReactNode = null;
@@ -366,6 +389,38 @@ const CompactSessionRow = React.memo(({ session, selected, showBorder }: { sessi
                     >
                         {session.name}
                     </Text>
+                    <View style={styles.providerBadgeSlot}>
+                        <AgentProviderBadge providers={session.providerTypes} size={13} />
+                    </View>
+                    {isGroupSession && (
+                        <View
+                            style={[styles.groupInlineBadge, { backgroundColor: groupColor }]}
+                            // @ts-ignore - Web only events
+                            onMouseEnter={() => setIsGroupBadgeHovered(true)}
+                            // @ts-ignore - Web only events
+                            onMouseLeave={() => setIsGroupBadgeHovered(false)}
+                        >
+                            <Ionicons name="people" size={10} color="#FFFFFF" />
+                            {isGroupBadgeHovered && (
+                                <Text style={styles.groupInlineBadgeText} numberOfLines={1}>
+                                    {groupRoleLabel}
+                                </Text>
+                            )}
+                        </View>
+                    )}
+                </View>
+                <View style={styles.sessionMetaRow}>
+                    <Text style={[styles.statusLabel, { color: status.color }]} numberOfLines={1}>
+                        {statusLabel}
+                    </Text>
+                    {session.totalTodosCount > 0 && (
+                        <Text style={styles.todoLabel} numberOfLines={1}>
+                            {session.completedTodosCount}/{session.totalTodosCount}
+                        </Text>
+                    )}
+                    {session.hasDraft && (
+                        <Ionicons name="create-outline" size={11} color={theme.colors.textSecondary} />
+                    )}
                 </View>
             </View>
         </Pressable>
@@ -375,12 +430,14 @@ const CompactSessionRow = React.memo(({ session, selected, showBorder }: { sessi
         return (
             <>
                 {itemContent}
-                <SessionActionsPopover
-                    anchor={actionsAnchor}
-                    onClose={() => setActionsAnchor(null)}
-                    sessionId={session.id}
-                    visible={!!actionsAnchor}
-                />
+                {!session.isGroup && (
+                    <SessionActionsPopover
+                        anchor={actionsAnchor}
+                        onClose={() => setActionsAnchor(null)}
+                        sessionId={session.id}
+                        visible={!!actionsAnchor}
+                    />
+                )}
             </>
         );
     }
@@ -511,7 +568,7 @@ const stylesheet = StyleSheet.create((theme) => ({
     },
     // Session row styles
     sessionRow: {
-        height: 56,
+        height: 64,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
@@ -549,6 +606,40 @@ const stylesheet = StyleSheet.create((theme) => ({
         width: 16,
         height: 16,
         marginRight: 8,
+    },
+    providerBadgeSlot: {
+        marginLeft: 8,
+    },
+    sessionMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginLeft: 24,
+        marginTop: 3,
+        minHeight: 14,
+    },
+    statusLabel: {
+        fontSize: 11,
+        ...Typography.default('semiBold'),
+    },
+    todoLabel: {
+        fontSize: 11,
+        color: theme.colors.textSecondary,
+        ...Typography.default('regular'),
+    },
+    groupInlineBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginLeft: 8,
+    },
+    groupInlineBadgeText: {
+        fontSize: 10,
+        color: '#FFFFFF',
+        ...Typography.default('semiBold'),
     },
     swipeAction: {
         width: 112,

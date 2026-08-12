@@ -39,6 +39,15 @@ function rewriteLoopbackHost(url: string): string {
     }
 }
 
+function isHappyAttachmentUrl(url: string): boolean {
+    try {
+        const target = new URL(url);
+        return /^\/v1\/sessions\/[^/]+\/attachments\/[^/]+$/.test(target.pathname);
+    } catch {
+        return false;
+    }
+}
+
 export type RequestUploadResult = {
     ref: string;
     uploadUrl: string;
@@ -126,15 +135,13 @@ export async function uploadEncryptedBlob(
         return;
     }
 
-    // PUT (local-storage mode): direct upload to our server.
-    const serverUrl = getServerUrl();
-    const isServerUrl = upload.uploadUrl.startsWith(serverUrl);
+    // PUT is only used by Happy Server local-storage mode. It always requires
+    // Bearer auth; S3 uploads use presigned POST above, where extra auth
+    // headers would be wrong.
     const headers: Record<string, string> = {
+        'Authorization': `Bearer ${credentials.token}`,
         'Content-Type': 'application/octet-stream',
     };
-    if (isServerUrl) {
-        headers['Authorization'] = `Bearer ${credentials.token}`;
-    }
 
     // Build a standalone ArrayBuffer of exactly encryptedData.length bytes.
     // RN's iOS Blob polyfill rejects Uint8Array/ArrayBuffer constructors
@@ -201,9 +208,8 @@ export async function downloadEncryptedAttachment(
     const { downloadUrl: rawDownloadUrl } = await requestRes.json() as { downloadUrl: string };
     const downloadUrl = rewriteLoopbackHost(rawDownloadUrl);
 
-    const isServerUrl = downloadUrl.startsWith(API_ENDPOINT);
     const headers: Record<string, string> = {};
-    if (isServerUrl) {
+    if (isHappyAttachmentUrl(downloadUrl)) {
         headers['Authorization'] = `Bearer ${credentials.token}`;
     }
     let blobRes: Response;
