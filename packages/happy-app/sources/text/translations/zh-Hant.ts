@@ -988,4 +988,9 @@ export const zhHant: TranslationStructure = {
         friendAccepted: ({ name }: { name: string }) => `您現在與 ${name} 成為了好友`,
         friendAcceptedGeneric: '好友請求已接受',
     },
+    taskboard: {
+        title: '任務看板', newTask: '新增任務', taskTitle: '任務標題', description: '任務說明', create: '建立任務',
+        empty: '尚無任務', emptyDescription: '建立任務以追蹤各 Agent 的工作。', unavailable: '此裝置上的任務看板無法使用。',
+        todo: '待辦', inProgress: '處理中', inReview: '待審核', blocked: '已阻塞', done: '已完成', claim: '認領', complete: '完成', review: '送審', refresh: '重新整理',
+    },
 } as const;

@@ -22,6 +22,7 @@ import { Typography } from '@/constants/Typography';
 import { t } from '@/text';
 import { isUsingCustomServer } from '@/sync/serverConfig';
 import { trackFriendsSearch } from '@/track';
+import { TaskboardView } from './TaskboardView';
 
 interface MainViewProps {
     variant: 'phone' | 'sidebar';
@@ -105,10 +106,11 @@ const TAB_TITLES = {
     groups: 'Groups',
     inbox: 'tabs.inbox',
     settings: 'tabs.settings',
+    taskboard: 'taskboard.title',
 } as const;
 
 // Active tabs
-type ActiveTabType = 'sessions' | 'groups' | 'inbox' | 'settings';
+type ActiveTabType = 'sessions' | 'groups' | 'inbox' | 'settings' | 'taskboard';
 
 // Header title component with connection status
 const HeaderTitle = React.memo(({ activeTab }: { activeTab: ActiveTabType }) => {
@@ -254,6 +256,8 @@ export const MainView = React.memo(({ variant }: MainViewProps) => {
                 return <GroupsView />;
             case 'settings':
                 return <SettingsViewWrapper />;
+            case 'taskboard':
+                return <TaskboardView />;
             case 'sessions':
             default:
                 return <SessionsListWrapper />;

@@ -1017,6 +1017,11 @@ export const ru: TranslationStructure = {
         friendAccepted: ({ name }: { name: string }) => `Вы теперь друзья с ${name}`,
         friendAcceptedGeneric: 'Запрос в друзья принят',
     },
+    taskboard: {
+        title: 'Доска задач', newTask: 'Новая задача', taskTitle: 'Название задачи', description: 'Описание', create: 'Создать задачу',
+        empty: 'Задач пока нет', emptyDescription: 'Создайте задачу для отслеживания работы агентов.', unavailable: 'Доска задач недоступна на этом устройстве.',
+        todo: 'Нужно сделать', inProgress: '', inReview: 'In review', blocked: 'Заблокировано', done: 'Готово', claim: 'Взять', complete: '', review: 'Review', refresh: 'Обновить',
+    },
 
 } as const;
 

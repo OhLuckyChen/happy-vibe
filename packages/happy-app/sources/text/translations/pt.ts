@@ -986,6 +986,11 @@ export const pt: TranslationStructure = {
         friendRequestGeneric: 'Novo pedido de amizade',
         friendAccepted: ({ name }: { name: string }) => `Agora você é amigo de ${name}`,
         friendAcceptedGeneric: 'Pedido de amizade aceito',
+    },
+    taskboard: {
+        title: 'Quadro de tarefas', newTask: 'Nova tarefa', taskTitle: 'Título da tarefa', description: 'Descrição', create: 'Criar tarefa',
+        empty: 'Ainda não há tarefas', emptyDescription: 'Crie uma tarefa para acompanhar o trabalho dos agentes.', unavailable: 'O quadro não está disponível nesta máquina.',
+        todo: 'A fazer', inProgress: '', inReview: 'In review', blocked: 'Bloqueada', done: 'Concluída', claim: 'Assumir', complete: '', review: 'Review', refresh: 'Atualizar',
     }
 } as const;
 

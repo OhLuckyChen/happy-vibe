@@ -34,6 +34,7 @@ import { resolveCodexExecutionPolicy } from './executionPolicy';
 import { mapCodexMcpMessageToSessionEnvelopes, mapCodexProcessorMessageToSessionEnvelopes } from './utils/sessionProtocolMapper';
 import { resumeExistingThread } from './resumeExistingThread';
 import { emitReadyIfIdle } from './emitReadyIfIdle';
+import { TASKBOARD_AGENT_INSTRUCTION, taskboardMcpServers } from '@/taskboard/mcpConfig';
 
 /**
  * Extracts a human-readable error from a codex task_complete/turn_aborted event.
@@ -131,6 +132,7 @@ export async function runCodex(opts: {
         groupName: process.env.HAPPY_GROUP_NAME,
         agentRole: process.env.HAPPY_GROUP_AGENT_ROLE as 'executor' | 'reviewer' | undefined,
         agentType: 'codex',
+        taskboardIssueId: process.env.AS_BOSS_TASKBOARD_ISSUE_ID,
     });
 
     // Check for session reconnection env vars (set by daemon for resume-in-place)
@@ -693,7 +695,8 @@ export async function runCodex(opts: {
         happy: {
             command: process.execPath,
             args: ['--no-warnings', '--no-deprecation', bridgeEntrypoint, '--url', happyServer.url]
-        }
+        },
+        ...taskboardMcpServers(),
     } as const;
     let first = true;
 
@@ -765,11 +768,12 @@ export async function runCodex(opts: {
                     session.updateMetadata((currentMetadata) => ({
                         ...currentMetadata,
                         codexThreadId: startedThread.threadId,
+                        taskboardIssueId: currentMetadata.taskboardIssueId ?? process.env.AS_BOSS_TASKBOARD_ISSUE_ID,
                     }));
                 }
 
                 const turnPrompt = first
-                    ? message.message + '\n\n' + CHANGE_TITLE_INSTRUCTION
+                    ? message.message + '\n\n' + CHANGE_TITLE_INSTRUCTION + '\n\n' + TASKBOARD_AGENT_INSTRUCTION
                     : message.message;
 
                 const result = await client.sendTurnAndWait(turnPrompt, {

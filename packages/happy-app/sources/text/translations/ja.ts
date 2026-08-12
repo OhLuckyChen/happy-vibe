@@ -989,5 +989,10 @@ export const ja: TranslationStructure = {
         friendRequestGeneric: '新しい友達リクエスト',
         friendAccepted: ({ name }: { name: string }) => `${name}さんと友達になりました`,
         friendAcceptedGeneric: '友達リクエストが承認されました',
+    },
+    taskboard: {
+        title: 'タスクボード', newTask: '新しいタスク', taskTitle: 'タスク名', description: '説明', create: 'タスクを作成',
+        empty: 'タスクはありません', emptyDescription: 'エージェントの作業を追跡するタスクを作成します。', unavailable: 'このマシンではタスクボードを利用できません。',
+        todo: '未着手', inProgress: '', inReview: 'In review', blocked: 'ブロック中', done: '完了', claim: '担当する', complete: '', review: 'Review', refresh: '更新',
     }
 } as const;

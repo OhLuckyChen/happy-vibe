@@ -1,5 +1,6 @@
 import { trimIdent } from "@/utils/trimIdent";
 import { shouldIncludeCoAuthoredBy } from "./claudeSettings";
+import { TASKBOARD_AGENT_INSTRUCTION } from '@/taskboard/mcpConfig';
 
 /**
  * Base system prompt shared across all configurations
@@ -31,8 +32,8 @@ export const systemPrompt = (() => {
   const includeCoAuthored = shouldIncludeCoAuthoredBy();
   
   if (includeCoAuthored) {
-    return BASE_SYSTEM_PROMPT + '\n\n' + CO_AUTHORED_CREDITS;
+    return BASE_SYSTEM_PROMPT + '\n\n' + TASKBOARD_AGENT_INSTRUCTION + '\n\n' + CO_AUTHORED_CREDITS;
   } else {
-    return BASE_SYSTEM_PROMPT;
+    return BASE_SYSTEM_PROMPT + '\n\n' + TASKBOARD_AGENT_INSTRUCTION;
   }
 })();

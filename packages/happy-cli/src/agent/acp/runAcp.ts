@@ -18,6 +18,7 @@ import { notifyDaemonSessionStarted } from '@/daemon/controlClient';
 import { encodeBase64 } from '@/api/encryption';
 import { registerKillSessionHandler } from '@/claude/registerKillSessionHandler';
 import { startHappyServer } from '@/claude/utils/startHappyServer';
+import { taskboardMcpServers } from '@/taskboard/mcpConfig';
 import { projectPath } from '@/projectPath';
 import { BasePermissionHandler, type PermissionResult } from '@/utils/BasePermissionHandler';
 import { connectionState } from '@/utils/serverConnectionErrors';
@@ -534,6 +535,7 @@ export async function runAcp(opts: {
       command: join(projectPath(), 'bin', 'happy-mcp.mjs'),
       args: ['--url', happyServer.url],
     },
+    ...taskboardMcpServers(),
   };
 
   const backend = new AcpBackend({

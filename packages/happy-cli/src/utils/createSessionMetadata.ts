@@ -39,6 +39,7 @@ export interface CreateSessionMetadataOptions {
     groupName?: string;
     agentRole?: 'executor' | 'reviewer';
     agentType?: 'claude' | 'codex';
+    taskboardIssueId?: string;
 }
 
 /**
@@ -96,6 +97,7 @@ export function createSessionMetadata(opts: CreateSessionMetadataOptions): Sessi
         groupName: opts.groupName,
         agentRole: opts.agentRole,
         agentType: opts.agentType,
+        taskboardIssueId: opts.taskboardIssueId,
         sandbox: opts.sandbox?.enabled ? opts.sandbox : null,
         dangerouslySkipPermissions: opts.dangerouslySkipPermissions ?? null,
     };

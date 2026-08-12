@@ -32,6 +32,7 @@ import { getProjectPath } from './utils/path';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RawJSONLinesSchema, type RawJSONLines } from './types';
+import { taskboardMcpServers } from '@/taskboard/mcpConfig';
 
 /** JavaScript runtime to use for spawning Claude Code */
 export type JsRuntime = 'node' | 'bun'
@@ -194,7 +195,7 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
                 abort: new AbortController().signal,
                 claudeEnvVars: options.claudeEnvVars,
                 claudeArgs: options.claudeArgs,
-                mcpServers: {},
+                mcpServers: taskboardMcpServers(),
                 allowedTools: [],
                 sandboxConfig,
             });
@@ -792,7 +793,8 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
             'happy': {
                 type: 'http' as const,
                 url: happyServer.url,
-            }
+            },
+            ...taskboardMcpServers(),
         },
         session,
         claudeEnvVars: options.claudeEnvVars,

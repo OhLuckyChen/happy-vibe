@@ -1004,6 +1004,26 @@ export const en: TranslationStructure = {
         friendAcceptedGeneric: 'Friend request accepted',
     },
 
+    taskboard: {
+        title: 'Taskboard',
+        newTask: 'New task',
+        taskTitle: 'Task title',
+        description: 'Description',
+        create: 'Create task',
+        empty: 'No tasks yet',
+        emptyDescription: 'Create a task to track work across your agents.',
+        unavailable: 'Taskboard is unavailable on this machine.',
+        todo: 'To do',
+        inProgress: 'In progress',
+        inReview: 'In review',
+        blocked: 'Blocked',
+        done: 'Done',
+        claim: 'Claim',
+        complete: 'Complete',
+        review: 'Review',
+        refresh: 'Refresh',
+    },
+
 } as const;
 
 export type TranslationsEn = typeof en;

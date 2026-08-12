@@ -22,6 +22,7 @@ import {
     ForkTruncateUuidNotFoundError,
     ForkSourceMissingError,
 } from '@/claude/utils/claudeSessionFork';
+import { callTaskboardTool } from '@/taskboard/callTool';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -111,6 +112,16 @@ export class ApiMachineClient {
         });
 
         registerCommonHandlers(this.rpcHandlerManager, process.cwd());
+        this.rpcHandlerManager.registerHandler('taskboard-call', async (params: unknown) => {
+            const request = params as { name?: unknown; args?: unknown } | null;
+            if (!request || typeof request.name !== 'string') {
+                throw new Error('Taskboard tool name is required');
+            }
+            if (request.args !== undefined && (request.args === null || Array.isArray(request.args) || typeof request.args !== 'object')) {
+                throw new Error('Taskboard tool arguments must be an object');
+            }
+            return await callTaskboardTool(request.name, (request.args ?? {}) as Record<string, unknown>);
+        });
     }
 
     setRPCHandlers({

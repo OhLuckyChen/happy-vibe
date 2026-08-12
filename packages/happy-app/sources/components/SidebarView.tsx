@@ -87,6 +87,10 @@ export const SidebarView = React.memo(() => {
             {realtimeStatus !== 'disconnected' && (
                 <VoiceAssistantStatusBar variant="sidebar" />
             )}
+            <Pressable onPress={() => router.push('/taskboard')} style={styles.settingsRow}>
+                <Ionicons name="checkbox-outline" size={18} color={stylesheet.settingsText.color} />
+                <Text style={styles.settingsText}>{t('taskboard.title')}</Text>
+            </Pressable>
 
             {/* Sessions list */}
             <MainView variant="sidebar" />

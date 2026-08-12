@@ -183,6 +183,7 @@ export default function RootLayout() {
                     headerBackTitle: t('common.back'),
                 }}
             />
+            <Stack.Screen name="taskboard" options={{ headerShown: true, headerTitle: t('taskboard.title'), headerBackTitle: t('common.back') }} />
             <Stack.Screen
                 name="artifacts/[id]"
                 options={{

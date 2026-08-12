@@ -181,6 +181,59 @@ export interface ResumeSessionOptions {
     sessionId: string;
 }
 
+export type TaskboardTaskStatus = 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done';
+
+export interface TaskboardTask {
+    id: string;
+    projectId: string;
+    title: string;
+    description: string;
+    status: TaskboardTaskStatus;
+    threadId?: string | null;
+    version: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface TaskboardState {
+    tasks: TaskboardTask[];
+    project?: { id: string } | null;
+}
+
+async function taskboardCall<T>(machineId: string, name: string, args: Record<string, unknown> = {}): Promise<T> {
+    return await apiSocket.machineRPC<T, { name: string; args: Record<string, unknown> }>(
+        machineId,
+        'taskboard-call',
+        { name, args },
+    );
+}
+
+export async function taskboardList(machineId: string): Promise<TaskboardState> {
+    return await taskboardCall<TaskboardState>(machineId, 'list_taskboard_state');
+}
+
+export async function taskboardCreate(machineId: string, title: string, description: string): Promise<TaskboardState> {
+    const current = await taskboardList(machineId);
+    const projectId = current.project?.id ?? current.tasks[0]?.projectId;
+    if (!projectId) throw new Error('Taskboard project is unavailable');
+    await taskboardCall(machineId, 'create_taskboard_issue', {
+        projectId,
+        title,
+        description,
+    });
+    return await taskboardList(machineId);
+}
+
+export async function taskboardUpdate(
+    machineId: string,
+    id: string,
+    update: Partial<Pick<TaskboardTask, 'title' | 'description' | 'status'>>,
+): Promise<TaskboardState> {
+    const name = update.status ? 'move_taskboard_issue' : 'update_taskboard_issue';
+    await taskboardCall(machineId, name, { id, ...update });
+    return await taskboardList(machineId);
+}
+
 // Exported session operation functions
 
 /**

@@ -1018,6 +1018,11 @@ export const pl: TranslationStructure = {
         friendAccepted: ({ name }: { name: string }) => `Jesteś teraz znajomym z ${name}`,
         friendAcceptedGeneric: 'Zaproszenie do znajomych zaakceptowane',
     },
+    taskboard: {
+        title: 'Tablica zadań', newTask: 'Nowe zadanie', taskTitle: 'Tytuł zadania', description: 'Opis', create: 'Utwórz zadanie',
+        empty: 'Brak zadań', emptyDescription: 'Utwórz zadanie, aby śledzić pracę agentów.', unavailable: 'Tablica zadań jest niedostępna na tym urządzeniu.',
+        todo: 'Do zrobienia', inProgress: '', inReview: 'In review', blocked: 'Zablokowane', done: 'Gotowe', claim: 'Przejmij', complete: '', review: 'Review', refresh: 'Odśwież',
+    },
 
 } as const;
 

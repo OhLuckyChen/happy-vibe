@@ -989,6 +989,11 @@ export const es: TranslationStructure = {
         friendAccepted: ({ name }: { name: string }) => `Ahora eres amigo de ${name}`,
         friendAcceptedGeneric: 'Solicitud de amistad aceptada',
     },
+    taskboard: {
+        title: 'Tablero de tareas', newTask: 'Nueva tarea', taskTitle: 'Título de tarea', description: 'Descripción', create: 'Crear tarea',
+        empty: 'Aún no hay tareas', emptyDescription: 'Crea una tarea para seguir el trabajo de los agentes.', unavailable: 'El tablero no está disponible en esta máquina.',
+        todo: 'Pendiente', inProgress: '', inReview: 'In review', blocked: 'Bloqueada', done: 'Completada', claim: 'Asignarme', complete: '', review: 'Review', refresh: 'Actualizar',
+    },
 
 } as const;
 

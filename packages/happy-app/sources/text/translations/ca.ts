@@ -987,6 +987,11 @@ export const ca: TranslationStructure = {
         friendRequestGeneric: 'Nova sol·licitud d\'amistat',
         friendAccepted: ({ name }: { name: string }) => `Ara ets amic de ${name}`,
         friendAcceptedGeneric: 'Sol·licitud d\'amistat acceptada',
+    },
+    taskboard: {
+        title: 'Tauler de tasques', newTask: 'Tasca nova', taskTitle: 'Títol de la tasca', description: 'Descripció', create: 'Crea la tasca',
+        empty: 'Encara no hi ha tasques', emptyDescription: 'Crea una tasca per seguir la feina dels agents.', unavailable: 'El tauler no està disponible en aquesta màquina.',
+        todo: 'Per fer', inProgress: '', inReview: 'In review', blocked: 'Bloquejada', done: 'Feta', claim: 'Assumeix', complete: '', review: 'Review', refresh: 'Actualitza',
     }
 } as const;
 
