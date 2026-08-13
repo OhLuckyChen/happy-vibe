@@ -236,7 +236,7 @@ export const pl: TranslationStructure = {
         analyticsDisabled: 'Wszystkie śledzenie i telemetria wyłączone',
         analyticsEnabled: 'Anonimowa analityka użytkowania aktywna',
         imageUpload: 'Przesyłanie obrazów',
-        imageUploadSubtitle: 'Dołącz obrazy do wiadomości, aby Claude mógł je przeanalizować',
+        imageUploadSubtitle: 'Dołącz obrazy do wiadomości, aby Claude lub Codex mógł je przeanalizować',
     },
 
     errors: {

@@ -220,7 +220,7 @@ export const ja: TranslationStructure = {
         analyticsDisabled: 'すべてのトラッキングとテレメトリが無効',
         analyticsEnabled: '匿名の使用状況分析がアクティブ',
         imageUpload: '画像アップロード',
-        imageUploadSubtitle: 'メッセージに画像を添付してClaudeに分析させる',
+        imageUploadSubtitle: 'メッセージに画像を添付してClaudeまたはCodexに分析させる',
     },
 
     errors: {

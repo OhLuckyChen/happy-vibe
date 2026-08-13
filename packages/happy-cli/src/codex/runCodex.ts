@@ -34,6 +34,7 @@ import { resolveCodexExecutionPolicy } from './executionPolicy';
 import { mapCodexMcpMessageToSessionEnvelopes, mapCodexProcessorMessageToSessionEnvelopes } from './utils/sessionProtocolMapper';
 import { resumeExistingThread } from './resumeExistingThread';
 import { emitReadyIfIdle } from './emitReadyIfIdle';
+import type { PendingAttachment } from '@/utils/MessageQueue2';
 
 /**
  * Extracts a human-readable error from a codex task_complete/turn_aborted event.
@@ -48,6 +49,46 @@ function describeCodexFailure(msg: any): string | null {
         return err.message;
     }
     return 'Unknown error';
+}
+
+function detectCodexImageMime(bytes: Uint8Array): 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | null {
+    if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+        return 'image/png';
+    }
+    if (bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+        return 'image/jpeg';
+    }
+    if (bytes.length >= 4 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+        return 'image/gif';
+    }
+    if (
+        bytes.length >= 12 &&
+        bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+        bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+    ) {
+        return 'image/webp';
+    }
+    return null;
+}
+
+function attachmentsToCodexImages(attachments: PendingAttachment[] | undefined): Array<{ dataUrl: string }> | undefined {
+    if (!attachments || attachments.length === 0) {
+        return undefined;
+    }
+
+    const images: Array<{ dataUrl: string }> = [];
+    for (const attachment of attachments) {
+        const detected = detectCodexImageMime(attachment.data);
+        if (!detected) {
+            logger.debug(`[Codex] Skipping unsupported attachment (no magic-byte match): ${attachment.name}, claimed mimeType=${attachment.mimeType}`);
+            continue;
+        }
+        images.push({
+            dataUrl: `data:${detected};base64,${Buffer.from(attachment.data).toString('base64')}`,
+        });
+    }
+
+    return images.length > 0 ? images : undefined;
 }
 
 const DEFAULT_CODEX_MODEL = 'gpt-5.5';
@@ -253,7 +294,27 @@ export async function runCodex(opts: {
         'none', 'minimal', 'low', 'medium', 'high', 'xhigh',
     ];
 
-    session.onUserMessage((message) => {
+    session.onFileEvent((fileEvent) => {
+        const ev = fileEvent.content.data.ev;
+        logger.debug(`[Codex] File event received: ${ev.name} (${ev.size} bytes, ref: ${ev.ref})`);
+        const downloadPromise = (async (): Promise<PendingAttachment | null> => {
+            try {
+                const decrypted = await session.downloadAndDecryptAttachment(ev.ref);
+                if (!decrypted) {
+                    logger.debug(`[Codex] Failed to decrypt attachment: ${ev.name}`);
+                    return null;
+                }
+                logger.debug(`[Codex] Attachment decrypted: ${ev.name} (${decrypted.length} bytes)`);
+                return { data: decrypted, mimeType: ev.mimeType ?? 'image/jpeg', name: ev.name };
+            } catch (error) {
+                logger.debug(`[Codex] Failed to download attachment: ${ev.name}`, { error });
+                return null;
+            }
+        })();
+        session.trackAttachmentDownload(downloadPromise);
+    });
+
+    session.onUserMessage(async (message) => {
         // Resolve permission mode (validate against Codex-native modes)
         let messagePermissionMode = currentPermissionMode;
         if (message.meta?.permissionMode) {
@@ -305,7 +366,8 @@ export async function runCodex(opts: {
             model: messageModel,
             effort: messageEffort,
         };
-        messageQueue.push(message.content.text, enhancedMode);
+        const attachmentsForThisMessage = await session.drainAttachmentsForUserMessage();
+        messageQueue.push(message.content.text, enhancedMode, attachmentsForThisMessage);
     });
     let thinking = false;
     let currentTurnId: string | null = null;
@@ -714,11 +776,11 @@ export async function runCodex(opts: {
             first = false;
         }
 
-        let pending: { message: string; mode: EnhancedMode; isolate: boolean; hash: string } | null = null;
+        let pending: { message: string; mode: EnhancedMode; isolate: boolean; hash: string; attachments?: PendingAttachment[] } | null = null;
 
         while (!shouldExit) {
             logActiveHandles('loop-top');
-            let message: { message: string; mode: EnhancedMode; isolate: boolean; hash: string } | null = pending;
+            let message: { message: string; mode: EnhancedMode; isolate: boolean; hash: string; attachments?: PendingAttachment[] } | null = pending;
             pending = null;
             if (!message) {
                 // Capture the current signal to distinguish idle-abort from queue close
@@ -777,6 +839,7 @@ export async function runCodex(opts: {
                     approvalPolicy: executionPolicy.approvalPolicy,
                     sandbox: executionPolicy.sandbox,
                     effort: message.mode.effort,
+                    images: attachmentsToCodexImages(message.attachments),
                 });
                 first = false;
 

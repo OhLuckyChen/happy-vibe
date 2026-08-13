@@ -177,12 +177,49 @@ export class CodexAppServerClient {
         return typeof status === 'string' && status.length > 0 ? status : null;
     }
 
+    /**
+     * app-server multiplexes collaboration child-thread notifications on the
+     * same stdio connection.  Lifecycle of those child turns must never settle
+     * the user-visible/root turn that sendTurnAndWait() is awaiting.
+     */
+    private isRootThreadNotification(params: any): boolean {
+        const threadId = params?.threadId ?? params?.thread_id ?? params?.conversationId ?? params?.conversation_id;
+        return typeof threadId !== 'string' || !this._threadId || threadId === this._threadId;
+    }
+
+    private notificationThreadId(params: any): string | undefined {
+        const threadId = params?.threadId ?? params?.thread_id ?? params?.conversationId ?? params?.conversation_id;
+        return typeof threadId === 'string' && threadId.length > 0 ? threadId : undefined;
+    }
+
+    private isRootEvent(message: any): boolean {
+        const threadId = message?.thread_id ?? message?.threadId ?? message?.conversation_id ?? message?.conversationId;
+        return typeof threadId !== 'string' || !this._threadId || threadId === this._threadId;
+    }
+
+    private normalizeLegacyEvent(msg: EventMsg): EventMsg {
+        if (!this.isRootEvent(msg)) {
+            const { thread_id, threadId, conversation_id, conversationId, ...event } = msg;
+            const childThreadId = thread_id ?? threadId ?? conversation_id ?? conversationId;
+            return {
+                ...event,
+                ...(typeof childThreadId === 'string' ? { subagent_thread_id: childThreadId } : {}),
+            };
+        }
+
+        // Root events do not need their provider thread id in the UI protocol.
+        // Removing it also prevents the mapper from rendering the root as a child.
+        const { thread_id, threadId, conversation_id, conversationId, ...event } = msg;
+        return event;
+    }
+
     private shouldHandleRawNotification(method: string): boolean {
         const isRawNotification = method === 'thread/started'
             || method === 'turn/started'
             || method === 'turn/completed'
             || method === 'thread/status/changed'
             || method === 'thread/tokenUsage/updated'
+            || method.startsWith('collab/')
             || method.startsWith('item/');
 
         if (!isRawNotification) {
@@ -241,7 +278,25 @@ export class CodexAppServerClient {
             return false;
         }
 
+        const isRootThread = this.isRootThreadNotification(params);
+        const sourceThreadId = this.notificationThreadId(params);
+
+        if (method.startsWith('collab/')) {
+            // Preserve the app-server's collaboration event name and payload.
+            // The session mapper owns presentation/lifecycle state for children.
+            const type = method
+                .replace(/^collab\//, 'collab_')
+                .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+                .toLowerCase();
+            this.eventHandler?.({ type, ...params });
+            return true;
+        }
+
         if (method === 'turn/started') {
+            if (!isRootThread) {
+                this.eventHandler?.({ type: 'subagent_turn_started', ...(sourceThreadId ? { thread_id: sourceThreadId } : {}) });
+                return true;
+            }
             const turnId = this.extractTurnId(params);
             if (turnId) {
                 this._turnId = turnId;
@@ -255,6 +310,10 @@ export class CodexAppServerClient {
         }
 
         if (method === 'turn/completed') {
+            if (!isRootThread) {
+                this.eventHandler?.({ type: 'subagent_turn_completed', ...(sourceThreadId ? { thread_id: sourceThreadId } : {}) });
+                return true;
+            }
             this.emitRawTurnCompletion(
                 this.extractTurnId(params),
                 this.extractTurnStatus(params),
@@ -267,7 +326,9 @@ export class CodexAppServerClient {
         if (method === 'thread/status/changed') {
             const statusType = params?.status?.type;
             if (statusType === 'idle' && this.pendingTurnCompletion) {
-                this.emitRawTurnCompletion(this._turnId, 'completed', null, method);
+                if (isRootThread) {
+                    this.emitRawTurnCompletion(this._turnId, 'completed', null, method);
+                }
             }
             return true;
         }
@@ -277,6 +338,7 @@ export class CodexAppServerClient {
             if (tokenUsage && typeof tokenUsage === 'object') {
                 this.eventHandler?.({
                     type: 'token_count',
+                    ...(!isRootThread && sourceThreadId ? { subagent_thread_id: sourceThreadId } : {}),
                     ...tokenUsage,
                 });
             }
@@ -297,6 +359,7 @@ export class CodexAppServerClient {
                 command: item.command,
                 cwd: item.cwd,
                 description: item.command,
+                ...(!isRootThread && sourceThreadId ? { subagent_thread_id: sourceThreadId } : {}),
             });
             return true;
         }
@@ -313,6 +376,7 @@ export class CodexAppServerClient {
                 status: item.status,
                 cwd: item.cwd,
                 command: item.command,
+                ...(!isRootThread && sourceThreadId ? { subagent_thread_id: sourceThreadId } : {}),
             });
             return true;
         }
@@ -331,6 +395,7 @@ export class CodexAppServerClient {
                     call_id: callId,
                     callId,
                     changes: changes ?? {},
+                    ...(!isRootThread && sourceThreadId ? { subagent_thread_id: sourceThreadId } : {}),
                 });
                 return true;
             }
@@ -341,6 +406,7 @@ export class CodexAppServerClient {
                     call_id: callId,
                     callId,
                     status: item.status,
+                    ...(!isRootThread && sourceThreadId ? { subagent_thread_id: sourceThreadId } : {}),
                 });
 
                 if (callId && (item.status === 'completed' || item.status === 'failed' || item.status === 'declined')) {
@@ -358,10 +424,11 @@ export class CodexAppServerClient {
                     message: text,
                     item_id: item.id,
                     phase: item.phase,
+                    ...(!isRootThread && sourceThreadId ? { subagent_thread_id: sourceThreadId } : {}),
                 });
             }
 
-            if (item.phase === 'final_answer' && this.pendingTurnCompletion) {
+            if (isRootThread && item.phase === 'final_answer' && this.pendingTurnCompletion) {
                 this.emitRawTurnCompletion(
                     this.extractTurnId(params),
                     'completed',
@@ -771,12 +838,14 @@ export class CodexAppServerClient {
         approvalPolicy?: ApprovalPolicy;
         sandbox?: SandboxMode;
         effort?: ReasoningEffort;
+        images?: Array<{ dataUrl: string }>;
     }): Promise<void> {
         if (!this._threadId) {
             throw new Error('No active thread. Call startThread first.');
         }
 
         const input: InputItem[] = [
+            ...(opts?.images?.map((image) => ({ type: 'image' as const, url: image.dataUrl })) ?? []),
             { type: 'text', text: prompt },
         ];
 
@@ -832,6 +901,7 @@ export class CodexAppServerClient {
         sandbox?: SandboxMode;
         effort?: ReasoningEffort;
         turnTimeoutMs?: number;
+        images?: Array<{ dataUrl: string }>;
     }): Promise<{ aborted: boolean }> {
         // Wait for any in-flight interruptTurn() to complete before starting a new
         // turn. Otherwise the stale turn/interrupt RPC can reach Codex after our
@@ -1145,17 +1215,20 @@ export class CodexAppServerClient {
             this.notificationProtocol = 'legacy';
             const msg = params?.msg;
             if (msg) {
-                // Extract turn_id from task_started events
-                if (msg.type === 'task_started' && msg.turn_id) {
+                const isRootEvent = this.isRootEvent(msg);
+                const event = this.normalizeLegacyEvent(msg);
+                // Extract turn_id from root task_started events only. Child
+                // collaboration turns are multiplexed on this connection.
+                if (isRootEvent && msg.type === 'task_started' && msg.turn_id) {
                     this._turnId = msg.turn_id;
                 }
-                if (msg.type === 'task_started') {
+                if (isRootEvent && msg.type === 'task_started') {
                     this.markPendingTurnStarted(msg.turn_id ?? msg.turnId ?? null);
                 }
                 // Fire event handler first (so consumer processes the event)
-                this.eventHandler?.(msg);
+                this.eventHandler?.(event);
                 // Then resolve turn completion promise
-                if (msg.type === 'task_complete' || msg.type === 'turn_aborted') {
+                if (isRootEvent && (msg.type === 'task_complete' || msg.type === 'turn_aborted')) {
                     const turnId = msg.turn_id ?? msg.turnId ?? null;
                     // Mark as completed so v2 turn/completed doesn't duplicate
                     if (turnId) {

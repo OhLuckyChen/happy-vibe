@@ -219,7 +219,7 @@ export const ca: TranslationStructure = {
         analyticsDisabled: 'Tot el seguiment i telemetria desactivats',
         analyticsEnabled: 'Analítica anònima d\'ús activa',
         imageUpload: 'Pujada d\'imatges',
-        imageUploadSubtitle: 'Adjunta imatges als missatges perquè Claude les analitzi',
+        imageUploadSubtitle: 'Adjunta imatges als missatges perquè Claude o Codex les analitzin',
     },
 
     errors: {

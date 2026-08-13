@@ -219,7 +219,7 @@ export const es: TranslationStructure = {
         analyticsDisabled: 'Todo el seguimiento y telemetría desactivados',
         analyticsEnabled: 'Analítica anónima de uso activa',
         imageUpload: 'Subida de imágenes',
-        imageUploadSubtitle: 'Adjunta imágenes a los mensajes para que Claude las analice',
+        imageUploadSubtitle: 'Adjunta imágenes a los mensajes para que Claude o Codex las analicen',
     },
 
     errors: {

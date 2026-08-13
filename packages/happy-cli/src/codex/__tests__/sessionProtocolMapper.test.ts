@@ -86,6 +86,30 @@ describe('mapCodexMcpMessageToSessionEnvelopes', () => {
         });
     });
 
+    it('maps Codex collaboration child lifecycle without ending the parent turn', () => {
+        const started = mapCodexMcpMessageToSessionEnvelopes(
+            { type: 'collab_agent_spawn_end', new_thread_id: 'thread-child' },
+            { currentTurnId: 'turn-root' },
+        );
+        const subagent = started.envelopes[0]?.subagent;
+
+        expect(started.currentTurnId).toBe('turn-root');
+        expect(started.envelopes[0]).toMatchObject({ subagent, ev: { t: 'start' } });
+
+        const stopped = mapCodexMcpMessageToSessionEnvelopes(
+            { type: 'subagent_turn_completed', subagent_thread_id: 'thread-child' },
+            {
+                currentTurnId: started.currentTurnId,
+                startedSubagents: started.startedSubagents,
+                activeSubagents: started.activeSubagents,
+                providerSubagentToSessionSubagent: started.providerSubagentToSessionSubagent,
+            },
+        );
+
+        expect(stopped.currentTurnId).toBe('turn-root');
+        expect(stopped.envelopes).toMatchObject([{ subagent, ev: { t: 'stop' } }]);
+    });
+
     it('maps exec command begin to tool-call-start', () => {
         const result = mapCodexMcpMessageToSessionEnvelopes(
             {

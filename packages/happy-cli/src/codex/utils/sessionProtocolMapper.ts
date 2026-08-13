@@ -82,13 +82,39 @@ function buildEnvelopeOptions(currentTurnId: string | null, subagent?: string): 
 }
 
 function pickProviderSubagent(message: Record<string, unknown>): string | undefined {
-    const candidates = [message.subagent, message.parent_call_id, message.parentCallId];
+    const candidates = [
+        message.subagent,
+        message.subagent_thread_id,
+        message.subagentThreadId,
+        message.agent_thread_id,
+        message.agentThreadId,
+        message.new_thread_id,
+        message.newThreadId,
+        message.thread_id,
+        message.threadId,
+        message.parent_call_id,
+        message.parentCallId,
+    ];
     for (const candidate of candidates) {
         if (typeof candidate === 'string' && candidate.length > 0) {
             return candidate;
         }
     }
     return undefined;
+}
+
+function emitSubagentStop(
+    subagent: string | undefined,
+    opts: CreateEnvelopeOptions,
+    startedSubagents: Set<string>,
+    activeSubagents: Set<string>,
+): SessionEnvelope[] {
+    if (!subagent || !activeSubagents.has(subagent)) {
+        return [];
+    }
+    activeSubagents.delete(subagent);
+    startedSubagents.delete(subagent);
+    return [createEnvelope('agent', { t: 'stop' }, { ...opts, subagent })];
 }
 
 function resolveSessionSubagent(
@@ -237,6 +263,36 @@ export function mapCodexMcpMessageToSessionEnvelopes(message: Record<string, unk
 
     const subagent = resolveSessionSubagent(message, providerSubagentToSessionSubagent);
     const opts = buildEnvelopeOptions(state.currentTurnId, subagent);
+
+    // Codex 0.144+ emits collaboration lifecycle events for child threads.
+    // They are distinct from root turn lifecycle: expose them as subagent
+    // state and never let them close the parent turn.
+    if (type === 'collab_agent_spawn_end'
+        || type === 'collab_agent_interaction_begin'
+        || type === 'collab_resume_end'
+        || type === 'subagent_turn_started') {
+        const envelopes: SessionEnvelope[] = [];
+        maybeEmitSubagentStart(subagent, opts, startedSubagents, activeSubagents, envelopes);
+        return {
+            currentTurnId: state.currentTurnId,
+            startedSubagents,
+            activeSubagents,
+            providerSubagentToSessionSubagent,
+            envelopes,
+        };
+    }
+
+    if (type === 'collab_agent_interaction_end'
+        || type === 'collab_close_end'
+        || type === 'subagent_turn_completed') {
+        return {
+            currentTurnId: state.currentTurnId,
+            startedSubagents,
+            activeSubagents,
+            providerSubagentToSessionSubagent,
+            envelopes: emitSubagentStop(subagent, opts, startedSubagents, activeSubagents),
+        };
+    }
 
     if (type === 'agent_message') {
         if (typeof message.message !== 'string') {

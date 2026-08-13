@@ -217,7 +217,7 @@ export const it: TranslationStructure = {
         analyticsDisabled: 'Tutto il tracciamento e la telemetria disabilitati',
         analyticsEnabled: 'Analisi anonime di utilizzo attive',
         imageUpload: 'Caricamento immagini',
-        imageUploadSubtitle: 'Allega immagini ai messaggi per farle analizzare da Claude',
+        imageUploadSubtitle: 'Allega immagini ai messaggi per farle analizzare da Claude o Codex',
     },
 
     errors: {
