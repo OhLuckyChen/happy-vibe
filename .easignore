@@ -12,7 +12,17 @@ packages/codium/
 *.log
 .expo/
 dist/
+tmp/
 tsconfig.tsbuildinfo
 .DS_Store
 *.bak
 *.bak.*
+
+# 本地构建产物，不能带进 EAS archive
+*.apk
+*.aab
+packages/happy-app/*.apk
+packages/happy-app/*.aab
+packages/happy-app/build-*.apk
+packages/happy-app/as-boss-*.apk
+packages/happy-app/android/app/build/

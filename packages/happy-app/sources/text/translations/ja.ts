@@ -994,5 +994,6 @@ export const ja: TranslationStructure = {
         title: 'タスクボード', newTask: '新しいタスク', taskTitle: 'タスク名', description: '説明', create: 'タスクを作成',
         empty: 'タスクはありません', emptyDescription: 'エージェントの作業を追跡するタスクを作成します。', unavailable: 'このマシンではタスクボードを利用できません。',
         todo: '未着手', inProgress: '', inReview: 'In review', blocked: 'ブロック中', done: '完了', claim: '担当する', complete: '', review: 'Review', refresh: '更新',
+        search: 'Search tasks', priority: 'Priority', priorityNone: 'No priority', priorityUrgent: 'Urgent', priorityHigh: 'High', priorityMedium: 'Medium', priorityLow: 'Low', labels: 'Labels', labelsPlaceholder: 'Comma-separated labels', saveChanges: 'Save changes', schedule: 'Schedule', startDate: 'Start date', dueDate: 'Due date', relations: 'Relations', subtasks: 'Subtasks', blockedBy: 'Blocked by', blocks: 'Blocks', happySession: 'Happy session', createHappySession: 'Create Happy session', unlinkSession: 'Unlink session', activity: 'Activity', filterAll: 'All tasks', filterActive: 'Active', workspaceUnavailable: 'A project workspace is required to create a Happy session.', sessionCreateFailed: 'Unable to create Happy session.', today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier',
     }
 } as const;

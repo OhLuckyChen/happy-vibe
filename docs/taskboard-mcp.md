@@ -34,7 +34,9 @@ AS_BOSS_TASKBOARD_ISSUE_ID=<taskboard issue id or identifier>
 Codex 首次 `thread/start` 后，Happy session metadata 会同时保存：
 
 - `codexThreadId`: Codex app-server 返回的标准 thread id，用于 Taskboard 识别 Codex session。
-- `taskboardIssueId`: as-boss 保存的 Taskboard Issue 映射，不写入 Taskboard 的 `threadId` 字段。
+- `taskboardIssueId`: as-boss 保存的 Taskboard Issue 映射。
+
+Happy 的任务看板页面遵循同一条数据边界：Taskboard 保存任务本身（标题、描述、状态、优先级、标签、日期、关系和评论），Happy Server 保存会话与消息。任务上的 `threadId` 只保存关联会话的标识，不复制会话消息；创建会话后，客户端返回 Happy 会话页继续工作。
 
 ## 生效范围
 
@@ -46,4 +48,4 @@ Codex 首次 `thread/start` 后，Happy session metadata 会同时保存：
 
 ## 上线前检查
 
-确认 Taskboard MCP Server 能完成 `initialize` 和 `tools/list` 握手，再启动 as-boss Agent。随后从 as-boss 创建或认领一个 Issue，检查该 Issue 的 `threadId` 等于 session metadata 中的 `codexThreadId`，并验证 Web 看板、taskctl 与 as-boss 读取到同一 Issue 状态和评论。
+确认 Taskboard MCP Server 能完成 `initialize` 和 `tools/list` 握手，再启动 as-boss Agent。随后从 as-boss 创建或认领一个 Issue，验证 Web 看板、taskctl 与 as-boss 读取到同一 Issue 状态和评论；从 Happy 创建关联会话后，验证任务中的关联会话可跳转至对应 Happy 会话。

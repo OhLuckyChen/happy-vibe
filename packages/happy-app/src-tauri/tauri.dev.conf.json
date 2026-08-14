@@ -1,11 +1,11 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "As Boss (dev)",
-  "identifier": "com.lincya.happyvibe.dev",
+  "productName": "Happy (dev)",
+  "identifier": "com.slopus.happy.dev",
   "app": {
     "windows": [
       {
-        "title": "As Boss (dev)",
+        "title": "Happy (dev)",
         "width": 1680,
         "height": 1050,
         "titleBarStyle": "Overlay",

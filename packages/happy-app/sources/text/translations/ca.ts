@@ -992,6 +992,7 @@ export const ca: TranslationStructure = {
         title: 'Tauler de tasques', newTask: 'Tasca nova', taskTitle: 'Títol de la tasca', description: 'Descripció', create: 'Crea la tasca',
         empty: 'Encara no hi ha tasques', emptyDescription: 'Crea una tasca per seguir la feina dels agents.', unavailable: 'El tauler no està disponible en aquesta màquina.',
         todo: 'Per fer', inProgress: '', inReview: 'In review', blocked: 'Bloquejada', done: 'Feta', claim: 'Assumeix', complete: '', review: 'Review', refresh: 'Actualitza',
+        search: 'Search tasks', priority: 'Priority', priorityNone: 'No priority', priorityUrgent: 'Urgent', priorityHigh: 'High', priorityMedium: 'Medium', priorityLow: 'Low', labels: 'Labels', labelsPlaceholder: 'Comma-separated labels', saveChanges: 'Save changes', schedule: 'Schedule', startDate: 'Start date', dueDate: 'Due date', relations: 'Relations', subtasks: 'Subtasks', blockedBy: 'Blocked by', blocks: 'Blocks', happySession: 'Happy session', createHappySession: 'Create Happy session', unlinkSession: 'Unlink session', activity: 'Activity', filterAll: 'All tasks', filterActive: 'Active', workspaceUnavailable: 'A project workspace is required to create a Happy session.', sessionCreateFailed: 'Unable to create Happy session.', today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier',
     }
 } as const;
 

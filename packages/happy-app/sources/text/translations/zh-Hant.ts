@@ -992,5 +992,6 @@ export const zhHant: TranslationStructure = {
         title: '任務看板', newTask: '新增任務', taskTitle: '任務標題', description: '任務說明', create: '建立任務',
         empty: '尚無任務', emptyDescription: '建立任務以追蹤各 Agent 的工作。', unavailable: '此裝置上的任務看板無法使用。',
         todo: '待辦', inProgress: '處理中', inReview: '待審核', blocked: '已阻塞', done: '已完成', claim: '認領', complete: '完成', review: '送審', refresh: '重新整理',
+        search: '搜尋任務', priority: '優先級', priorityNone: '無優先級', priorityUrgent: '緊急', priorityHigh: '高', priorityMedium: '中', priorityLow: '低', labels: '標籤', labelsPlaceholder: '以逗號分隔標籤', saveChanges: '儲存變更', schedule: '排程', startDate: '開始日期', dueDate: '截止日期', relations: '關聯', subtasks: '子議題', blockedBy: '被阻塞於', blocks: '阻塞', happySession: 'Happy 對話', createHappySession: '建立 Happy 對話', unlinkSession: '解除對話關聯', activity: '動態', filterAll: '所有任務', filterActive: '進行中', workspaceUnavailable: '建立 Happy 對話需要專案工作目錄。', sessionCreateFailed: '無法建立 Happy 對話。', today: '今日', yesterday: '昨日', earlier: '更早',
     },
 } as const;

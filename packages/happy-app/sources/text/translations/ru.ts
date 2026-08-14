@@ -1021,6 +1021,7 @@ export const ru: TranslationStructure = {
         title: 'Доска задач', newTask: 'Новая задача', taskTitle: 'Название задачи', description: 'Описание', create: 'Создать задачу',
         empty: 'Задач пока нет', emptyDescription: 'Создайте задачу для отслеживания работы агентов.', unavailable: 'Доска задач недоступна на этом устройстве.',
         todo: 'Нужно сделать', inProgress: '', inReview: 'In review', blocked: 'Заблокировано', done: 'Готово', claim: 'Взять', complete: '', review: 'Review', refresh: 'Обновить',
+        search: 'Search tasks', priority: 'Priority', priorityNone: 'No priority', priorityUrgent: 'Urgent', priorityHigh: 'High', priorityMedium: 'Medium', priorityLow: 'Low', labels: 'Labels', labelsPlaceholder: 'Comma-separated labels', saveChanges: 'Save changes', schedule: 'Schedule', startDate: 'Start date', dueDate: 'Due date', relations: 'Relations', subtasks: 'Subtasks', blockedBy: 'Blocked by', blocks: 'Blocks', happySession: 'Happy session', createHappySession: 'Create Happy session', unlinkSession: 'Unlink session', activity: 'Activity', filterAll: 'All tasks', filterActive: 'Active', workspaceUnavailable: 'A project workspace is required to create a Happy session.', sessionCreateFailed: 'Unable to create Happy session.', today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier',
     },
 
 } as const;

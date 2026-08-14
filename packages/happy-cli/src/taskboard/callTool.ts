@@ -2,6 +2,7 @@ const DEFAULT_TASKBOARD_URL = 'http://127.0.0.1:47823';
 
 const ALLOWED_TOOLS = new Set([
     'list_taskboard_state',
+    'get_taskboard_issue',
     'create_taskboard_issue',
     'update_taskboard_issue',
     'move_taskboard_issue',
@@ -11,6 +12,7 @@ const ALLOWED_TOOLS = new Set([
 
 type TaskboardToolName =
     | 'list_taskboard_state'
+    | 'get_taskboard_issue'
     | 'create_taskboard_issue'
     | 'update_taskboard_issue'
     | 'move_taskboard_issue'
@@ -32,6 +34,11 @@ function requireString(args: Record<string, unknown>, key: string): string {
 function optionalString(args: Record<string, unknown>, key: string): string | undefined {
     const value = args[key];
     return typeof value === 'string' ? value : undefined;
+}
+
+function optionalNullableString(args: Record<string, unknown>, key: string): string | null | undefined {
+    const value = args[key];
+    return value === null || typeof value === 'string' ? value : undefined;
 }
 
 function optionalNumber(args: Record<string, unknown>, key: string): number | undefined {
@@ -115,6 +122,8 @@ export async function callTaskboardTool(name: string, args: Record<string, unkno
                 ...(await requestTaskboard('GET', `/api/tasks${listQuery(args)}`) as Record<string, unknown>),
                 project: await currentProject(),
             };
+        case 'get_taskboard_issue':
+            return await requestTaskboard('GET', taskPath(requireString(args, 'id')));
         case 'create_taskboard_issue':
             return await requestTaskboard('POST', '/api/tasks', {
                 projectId: requireString(args, 'projectId'),
@@ -123,7 +132,7 @@ export async function callTaskboardTool(name: string, args: Record<string, unkno
                 status: optionalString(args, 'status') ?? 'todo',
                 priority: optionalString(args, 'priority') ?? 'none',
                 labels: Array.isArray(args.labels) ? args.labels : [],
-                threadId: optionalString(args, 'threadId'),
+                threadId: optionalNullableString(args, 'threadId'),
             });
         case 'update_taskboard_issue':
             return await requestTaskboard('PATCH', taskPath(requireString(args, 'id')), {
@@ -132,7 +141,7 @@ export async function callTaskboardTool(name: string, args: Record<string, unkno
                 status: optionalString(args, 'status'),
                 priority: optionalString(args, 'priority'),
                 labels: Array.isArray(args.labels) ? args.labels : undefined,
-                threadId: optionalString(args, 'threadId'),
+                threadId: optionalNullableString(args, 'threadId'),
                 version: await issueVersion(requireString(args, 'id'), optionalNumber(args, 'version')),
             });
         case 'move_taskboard_issue':

@@ -993,5 +993,6 @@ export const zhHans: TranslationStructure = {
         title: '任务看板', newTask: '新建任务', taskTitle: '任务标题', description: '任务说明', create: '创建任务',
         empty: '暂无任务', emptyDescription: '创建任务以跟踪各个 Agent 的工作。', unavailable: '此设备上的任务看板不可用。',
         todo: '待办', inProgress: '处理中', inReview: '待审核', blocked: '已阻塞', done: '已完成', claim: '认领', complete: '完成', review: '送审', refresh: '刷新',
+        search: '搜索任务', priority: '优先级', priorityNone: '无优先级', priorityUrgent: '紧急', priorityHigh: '高', priorityMedium: '中', priorityLow: '低', labels: '标签', labelsPlaceholder: '用逗号分隔标签', saveChanges: '保存修改', schedule: '计划', startDate: '开始日期', dueDate: '截止日期', relations: '关联', subtasks: '子议题', blockedBy: '被阻塞于', blocks: '阻塞', happySession: 'Happy 会话', createHappySession: '创建 Happy 会话', unlinkSession: '解除会话关联', activity: '动态', filterAll: '全部任务', filterActive: '进行中', workspaceUnavailable: '创建 Happy 会话需要项目工作目录。', sessionCreateFailed: '无法创建 Happy 会话。', today: '今日', yesterday: '昨日', earlier: '更早',
     }
 } as const;

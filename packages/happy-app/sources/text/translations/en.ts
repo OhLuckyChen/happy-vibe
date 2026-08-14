@@ -1022,6 +1022,7 @@ export const en: TranslationStructure = {
         complete: 'Complete',
         review: 'Review',
         refresh: 'Refresh',
+        search: 'Search tasks', priority: 'Priority', priorityNone: 'No priority', priorityUrgent: 'Urgent', priorityHigh: 'High', priorityMedium: 'Medium', priorityLow: 'Low', labels: 'Labels', labelsPlaceholder: 'Comma-separated labels', saveChanges: 'Save changes', schedule: 'Schedule', startDate: 'Start date', dueDate: 'Due date', relations: 'Relations', subtasks: 'Subtasks', blockedBy: 'Blocked by', blocks: 'Blocks', happySession: 'Happy session', createHappySession: 'Create Happy session', unlinkSession: 'Unlink session', activity: 'Activity', filterAll: 'All tasks', filterActive: 'Active', workspaceUnavailable: 'A project workspace is required to create a Happy session.', sessionCreateFailed: 'Unable to create Happy session.', today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier',
     },
 
 } as const;

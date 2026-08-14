@@ -993,6 +993,7 @@ export const es: TranslationStructure = {
         title: 'Tablero de tareas', newTask: 'Nueva tarea', taskTitle: 'Título de tarea', description: 'Descripción', create: 'Crear tarea',
         empty: 'Aún no hay tareas', emptyDescription: 'Crea una tarea para seguir el trabajo de los agentes.', unavailable: 'El tablero no está disponible en esta máquina.',
         todo: 'Pendiente', inProgress: '', inReview: 'In review', blocked: 'Bloqueada', done: 'Completada', claim: 'Asignarme', complete: '', review: 'Review', refresh: 'Actualizar',
+        search: 'Search tasks', priority: 'Priority', priorityNone: 'No priority', priorityUrgent: 'Urgent', priorityHigh: 'High', priorityMedium: 'Medium', priorityLow: 'Low', labels: 'Labels', labelsPlaceholder: 'Comma-separated labels', saveChanges: 'Save changes', schedule: 'Schedule', startDate: 'Start date', dueDate: 'Due date', relations: 'Relations', subtasks: 'Subtasks', blockedBy: 'Blocked by', blocks: 'Blocks', happySession: 'Happy session', createHappySession: 'Create Happy session', unlinkSession: 'Unlink session', activity: 'Activity', filterAll: 'All tasks', filterActive: 'Active', workspaceUnavailable: 'A project workspace is required to create a Happy session.', sessionCreateFailed: 'Unable to create Happy session.', today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier',
     },
 
 } as const;

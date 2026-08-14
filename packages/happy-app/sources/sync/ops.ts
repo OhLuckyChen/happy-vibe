@@ -182,6 +182,7 @@ export interface ResumeSessionOptions {
 }
 
 export type TaskboardTaskStatus = 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done';
+export type TaskboardPriority = 'none' | 'urgent' | 'high' | 'medium' | 'low';
 
 export interface TaskboardTask {
     id: string;
@@ -189,7 +190,14 @@ export interface TaskboardTask {
     title: string;
     description: string;
     status: TaskboardTaskStatus;
+    priority: TaskboardPriority;
+    labels: string[];
     threadId?: string | null;
+    threadIds?: string[];
+    identifier?: string;
+    dueDate?: string | null;
+    startDate?: string | null;
+    relations?: { subIssues?: Array<{ id: string }>; blockedBy?: Array<{ id: string }>; blocks?: Array<{ id: string }> };
     version: number;
     createdAt: string;
     updatedAt: string;
@@ -197,22 +205,48 @@ export interface TaskboardTask {
 
 export interface TaskboardState {
     tasks: TaskboardTask[];
-    project?: { id: string } | null;
+    project?: { id: string; workspacePath?: string | null } | null;
 }
 
+export interface TaskboardComment { id: string; body: string; authorName: string; createdAt: string; }
+
 async function taskboardCall<T>(machineId: string, name: string, args: Record<string, unknown> = {}): Promise<T> {
-    return await apiSocket.machineRPC<T, { name: string; args: Record<string, unknown> }>(
-        machineId,
-        'taskboard-call',
-        { name, args },
-    );
+    const timeoutMs = 12_000;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race([
+            apiSocket.machineRPC<T, { name: string; args: Record<string, unknown> }>(
+                machineId,
+                'taskboard-call',
+                { name, args },
+            ),
+            new Promise<never>((_, reject) => {
+                timeout = setTimeout(() => reject(new Error('Taskboard request timed out')), timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timeout) clearTimeout(timeout);
+    }
 }
 
 export async function taskboardList(machineId: string): Promise<TaskboardState> {
     return await taskboardCall<TaskboardState>(machineId, 'list_taskboard_state');
 }
 
-export async function taskboardCreate(machineId: string, title: string, description: string): Promise<TaskboardState> {
+export async function taskboardGet(machineId: string, id: string): Promise<TaskboardTask> {
+    return await taskboardCall<TaskboardTask>(machineId, 'get_taskboard_issue', { id });
+}
+
+export async function taskboardComments(machineId: string, id: string): Promise<TaskboardComment[]> {
+    const result = await taskboardCall<{ comments: TaskboardComment[] }>(machineId, 'list_taskboard_comments', { id });
+    return result.comments;
+}
+
+export async function taskboardAddComment(machineId: string, id: string, body: string, threadId?: string): Promise<void> {
+    await taskboardCall(machineId, 'add_taskboard_comment', { id, body, threadId });
+}
+
+export async function taskboardCreate(machineId: string, title: string, description: string, priority: TaskboardPriority = 'none'): Promise<TaskboardState> {
     const current = await taskboardList(machineId);
     const projectId = current.project?.id ?? current.tasks[0]?.projectId;
     if (!projectId) throw new Error('Taskboard project is unavailable');
@@ -220,6 +254,7 @@ export async function taskboardCreate(machineId: string, title: string, descript
         projectId,
         title,
         description,
+        priority,
     });
     return await taskboardList(machineId);
 }
@@ -227,7 +262,7 @@ export async function taskboardCreate(machineId: string, title: string, descript
 export async function taskboardUpdate(
     machineId: string,
     id: string,
-    update: Partial<Pick<TaskboardTask, 'title' | 'description' | 'status'>>,
+    update: Partial<Pick<TaskboardTask, 'title' | 'description' | 'status' | 'priority' | 'labels' | 'threadId'>>,
 ): Promise<TaskboardState> {
     const name = update.status ? 'move_taskboard_issue' : 'update_taskboard_issue';
     await taskboardCall(machineId, name, { id, ...update });

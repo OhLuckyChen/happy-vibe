@@ -1022,6 +1022,7 @@ export const pl: TranslationStructure = {
         title: 'Tablica zadań', newTask: 'Nowe zadanie', taskTitle: 'Tytuł zadania', description: 'Opis', create: 'Utwórz zadanie',
         empty: 'Brak zadań', emptyDescription: 'Utwórz zadanie, aby śledzić pracę agentów.', unavailable: 'Tablica zadań jest niedostępna na tym urządzeniu.',
         todo: 'Do zrobienia', inProgress: '', inReview: 'In review', blocked: 'Zablokowane', done: 'Gotowe', claim: 'Przejmij', complete: '', review: 'Review', refresh: 'Odśwież',
+        search: 'Search tasks', priority: 'Priority', priorityNone: 'No priority', priorityUrgent: 'Urgent', priorityHigh: 'High', priorityMedium: 'Medium', priorityLow: 'Low', labels: 'Labels', labelsPlaceholder: 'Comma-separated labels', saveChanges: 'Save changes', schedule: 'Schedule', startDate: 'Start date', dueDate: 'Due date', relations: 'Relations', subtasks: 'Subtasks', blockedBy: 'Blocked by', blocks: 'Blocks', happySession: 'Happy session', createHappySession: 'Create Happy session', unlinkSession: 'Unlink session', activity: 'Activity', filterAll: 'All tasks', filterActive: 'Active', workspaceUnavailable: 'A project workspace is required to create a Happy session.', sessionCreateFailed: 'Unable to create Happy session.', today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier',
     },
 
 } as const;
